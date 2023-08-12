@@ -31,18 +31,11 @@ type AddressResponse struct {
 	TokyoStationDist float64 `json:"tokyo_sta_distance"`
 }
 
-func HaversineDistance(lat1, lon1, lat2, lon2 float64) float64 {
+func HaversineDistance(y, x, yt, xt float64) float64 {
 	// 地球の半径 (km)
 	R := 6371.0
 
-	// 緯度・経度の差をラジアンに変換
-	dLat := (lat2 - lat1) * (math.Pi / 180.0)
-	dLon := (lon2 - lon1) * (math.Pi / 180.0)
-
-	// 距離の計算
-	a := math.Sin(dLat/2)*math.Sin(dLat/2) + math.Cos(lat1*(math.Pi/180.0))*math.Cos(lat2*(math.Pi/180.0))*math.Sin(dLon/2)*math.Sin(dLon/2)
-	c := 2 * math.Atan2(math.Sqrt(a), math.Sqrt(1-a))
-	distance := R * c
+	distance := (math.Pi * R / 180) * math.Sqrt(math.Pow((x-xt)*math.Cos(math.Pi*(y+yt)/360), 2) + math.Pow(y-yt, 2))
 
 	return distance
 }
@@ -68,7 +61,6 @@ func FindCommonAddress(strings []string) string {
 		return ""
 	}
 
-	// Find the shortest string in the slice
 	shortest := strings[0]
 	for _, str := range strings {
 		if len(str) < len(shortest) {
@@ -76,7 +68,8 @@ func FindCommonAddress(strings []string) string {
 		}
 	}
 
-	// Find the common Address
+
+	// 共通部分を見つける
 	for i := 0; i < len(shortest); i += 3 {
 		address := shortest[:i+3]
 		for _, str := range strings {
@@ -90,7 +83,7 @@ func FindCommonAddress(strings []string) string {
 }
 
 func IsAddress(address, str string) bool {
-	return len(str) >= len(address) && str[:len(address)] == address
+	return str[:len(address)] == address
 }
 
 func AddressHandler(w http.ResponseWriter, r *http.Request) {
@@ -122,16 +115,16 @@ func AddressHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var maxDistance float64
-	var farthestAddress ExternalAddressResponse
+	maxDistance = 0.0
 
 	for _, loc := range externalAddress.Response.Location {
-		lat, _ := strconv.ParseFloat(loc.Y, 64)
-		lon, _ := strconv.ParseFloat(loc.X, 64)
+		y, _ := strconv.ParseFloat(loc.Y, 64)
+		x, _ := strconv.ParseFloat(loc.X, 64)
 
-		distance := HaversineDistance(lat, lon, 35.6809591, 139.7673068)
+		distance := HaversineDistance(y, x, 35.6809591, 139.7673068)
+
 		if distance > maxDistance {
 			maxDistance = distance
-			farthestAddress = *externalAddress
 		}
 	}
 
@@ -139,12 +132,13 @@ func AddressHandler(w http.ResponseWriter, r *http.Request) {
 	for _, loc := range externalAddress.Response.Location {
 		townNames = append(townNames, loc.Town)
 	}
+	
 	commonTown := FindCommonAddress(townNames)
 
 	address := &AddressResponse{
 		PostalCode:       postalCode,
 		HitCount:         len(externalAddress.Response.Location),
-		Address:          farthestAddress.Response.Location[0].Prefecture + farthestAddress.Response.Location[0].City + commonTown,
+		Address:          externalAddress.Response.Location[0].Prefecture + externalAddress.Response.Location[0].City + commonTown,
 		TokyoStationDist: math.Round(maxDistance*10) / 10,
 	}
 

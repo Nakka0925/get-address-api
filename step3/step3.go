@@ -22,7 +22,7 @@ type AccessLogAggregate struct {
 }
 
 
-func aggregateAccessLogs(accessLogs []*AccessLog) map[string]int {
+func AggregateAccessLogs(accessLogs []*AccessLog) map[string]int {
     requestCountMap := make(map[string]int)
     for _, log := range accessLogs {
         requestCountMap[log.PostalCode]++
@@ -30,8 +30,8 @@ func aggregateAccessLogs(accessLogs []*AccessLog) map[string]int {
     return requestCountMap
 }
 
-func sortAccessLogsByRequestCount(accessLogs []*AccessLog) []AccessLogAggregate {
-    requestCountMap := aggregateAccessLogs(accessLogs)
+func SortAccessLogsByRequestCount(accessLogs []*AccessLog) []AccessLogAggregate {
+    requestCountMap := AggregateAccessLogs(accessLogs)
 
     var aggregates []AccessLogAggregate
     for postalCode, requestCount := range requestCountMap {
@@ -49,7 +49,7 @@ func sortAccessLogsByRequestCount(accessLogs []*AccessLog) []AccessLogAggregate 
     return aggregates
 }
 
-func getAccessLogsFromDatabase() ([]*AccessLog, error) {
+func GetAccessLogsFromDatabase() ([]*AccessLog, error) {
     db, err := sql.Open("sqlite3", "./access_logs.db")
     if err != nil {
         return nil, err
@@ -80,24 +80,20 @@ func getAccessLogsFromDatabase() ([]*AccessLog, error) {
 
 
 func AccessLogsHandler(w http.ResponseWriter, r *http.Request) {
-    // データベースからアクセスログを取得（省略）
-	accessLogs, err := getAccessLogsFromDatabase()
+	accessLogs, err := GetAccessLogsFromDatabase()
     if err != nil {
         http.Error(w, "Failed to fetch access logs", http.StatusInternalServerError)
         return
     }
 
-    // アクセスログをリクエスト回数ごとに集計し、ソート
-    sortedAggregates := sortAccessLogsByRequestCount(accessLogs)
+    sortedAggregates := SortAccessLogsByRequestCount(accessLogs)
 
-    // レスポンスを構築
     response := struct {
         AccessLogs []AccessLogAggregate `json:"access_logs"`
     }{
         AccessLogs: sortedAggregates,
     }
 
-    // JSON形式でレスポンスを返す
     w.Header().Set("Content-Type", "application/json")
     json.NewEncoder(w).Encode(response)
 }

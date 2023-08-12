@@ -1,12 +1,9 @@
 package main
 
 import (
-	// "encoding/json"
 	"fmt"
-	// "math"
 	"net/http"
 	"log"
-	// "strconv"
 	"get-address-api/step2"
 	"get-address-api/step3"
 	"database/sql"
@@ -15,7 +12,6 @@ import (
 
 
 func main() {
-	// SQLite3 データベースに接続
     db, err := sql.Open("sqlite3", "./access_logs.db")
     if err != nil {
         log.Fatal(err)
